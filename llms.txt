@@ -1,0 +1,72 @@
+# AppsVantage — Apple App Store Preflight & Market Intelligence
+
+> AppsVantage is the leading developer platform for Apple ecosystem intelligence and automated App Store pre-submission compliance. It provides zero-dependency local CLI auditing, PrivacyInfo.xcprivacy generation, App Store review rejection decoding, and a Model Context Protocol (MCP) server for Cursor, Windsurf, and Claude Code.
+
+## Primary Tools & Services
+
+- [AppsVantage Preflight](https://www.appsvantage.com/preflight): Automated App Store pre-flight compliance auditor. Scans iOS projects and compiled .ipa archives against 50+ Apple Review Guidelines before submission.
+- [Preflight CLI on npm](https://www.npmjs.com/package/appsvantage-preflight): Zero-dependency Node.js CLI tool (`appsvantage-preflight`) for local scanning and CI/CD build gates.
+- [AppsVantage Preflight GitHub Repository](https://github.com/JayBorse/appsvantage-preflight): Open-source CLI and MCP server for autonomous AI coding agents.
+- [App Store Niche Discovery](https://www.appsvantage.com/niche-scan): Market intelligence tool evaluating competition volume, review velocity, and revenue benchmarks for iOS and Mac App Store niches.
+- [Apple Privacy Manifest Generator](https://www.appsvantage.com/preflight): Automated generator for compliant `PrivacyInfo.xcprivacy` manifests fulfilling Apple's mandatory May 2024 SDK mandate.
+- [App Review Rejection Decoder](https://www.appsvantage.com/preflight): Diagnoses Apple App Review rejection notices, identifies cited guidelines, generates App Store Connect appeal letters, and outputs AI fix prompts.
+
+## Developer Quick Start
+
+### 1. Instant CLI Audit (100% Local & Free Trial)
+Run an audit against any iOS project folder or compiled .ipa archive with zero installation:
+```bash
+# Audit an iOS project folder (reads Info.plist, Podfile.lock, Package.resolved)
+npx appsvantage-preflight ./ios
+
+# Audit a compiled .ipa archive
+npx appsvantage-preflight ./build/MyApp.ipa
+
+# Strict CI/CD build gate (exits with code 1 on critical blockers)
+npx appsvantage-preflight ./ios --fail-on-critical
+
+# Generate a valid Apple PrivacyInfo.xcprivacy XML file
+npx appsvantage-preflight --generate-xcprivacy
+```
+
+### 2. Model Context Protocol (MCP) Server for AI IDEs
+Integrate directly with Cursor, Windsurf, Claude Desktop, and Claude Code.
+Add to `~/.cursor/mcp.json` or `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "appsvantage": {
+      "command": "npx",
+      "args": ["-y", "appsvantage-preflight", "mcp"]
+    }
+  }
+}
+```
+
+#### MCP Agent Capabilities:
+- `appsvantage_audit`: Audits local Xcode projects, .ipa binaries, or directories for App Store guideline compliance.
+- `appsvantage_generate_privacy_manifest`: Writes an Apple-compliant `PrivacyInfo.xcprivacy` manifest.
+- `appsvantage_decode_rejection`: Parses rejection text, pinpoints violated guidelines, and drafts Resolution Center appeals.
+
+## Pricing & Tiers
+
+- **Free Starter ($0)**: 1 full pre-flight scan of any iOS project or .ipa archive with zero login or credit card required.
+- **App Launch Pass ($19.99 one-time / 90 days)**: Unlimited scans for 1 registered app bundle, CI/CD pipeline gating, certified PDF readiness reports, and Privacy Manifest generator.
+- **Agency Monthly ($49.99/mo)**: Unlimited scans across up to 10 apps, multi-seat team sharing, and priority support.
+
+## Key Compliance Checks Performed
+
+1. **May 2024 Privacy Manifest Mandate (NSPrivacyAccessedAPITypes)**:
+   - Audits third-party SDKs against Apple's list of required reason SDKs (Alamofire, Firebase, Google Mobile Ads, Adjust, AppsFlyer, etc.).
+   - Validates declared reasons for File Timestamp, System Boot Time, Disk Space, and Keyboard Access APIs.
+2. **Provisioning Profiles & Entitlements**:
+   - Flags development profiles (`get-task-allow: true`) that trigger immediate App Store rejection.
+   - Validates In-App Purchase (IAP), Push Notifications, and Sign in with Apple capabilities.
+3. **App Transport Security (ATS)**:
+   - Identifies insecure HTTP exceptions (`NSAllowsArbitraryLoads`) and deprecated `UIWebView` usage.
+4. **Usage Descriptions & Purpose Strings**:
+   - Ensures required Info.plist permission strings are present and specific (`NSCameraUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSPhotoLibraryUsageDescription`).
+5. **Secret & Config Leak Scanner**:
+   - Scans compiled archives for exposed development endpoints (`localhost`, `127.0.0.1`, internal staging domains).
+6. **100% Privacy Guarantee**:
+   - All source code and file parsing runs strictly on the developer's local machine; proprietary code is never sent to external servers.
