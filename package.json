@@ -1,6 +1,6 @@
 {
   "name": "appsvantage-preflight",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Apple App Store Pre-flight Guideline & Compliance Auditor, Privacy Manifest Generator, and MCP Agent Server.",
   "type": "module",
   "main": "./dist/cli.mjs",
@@ -32,9 +32,9 @@
     "type": "git",
     "url": "git+https://github.com/JayBorse/appsvantage-preflight.git"
   },
-  "homepage": "https://appsvantage.com",
+  "homepage": "https://www.appsvantage.com/preflight",
   "bugs": {
-    "url": "https://github.com/JayBorse/AppsVantage/issues"
+    "url": "https://github.com/JayBorse/appsvantage-preflight/issues"
   },
   "engines": {
     "node": ">=18.0.0"

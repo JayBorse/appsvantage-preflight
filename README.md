@@ -10,7 +10,7 @@ Audit iOS applications, Xcode projects, and compiled `.ipa` archives against App
 
 ## ⚡ Quick Start
 
-Run an audit instantly with zero installation:
+Run a full audit instantly with zero installation (your first audit is 100% free!):
 
 ```bash
 # Audit an iOS project folder (reads Info.plist, Podfile.lock, Package.resolved)
@@ -25,6 +25,30 @@ npx appsvantage-preflight ./ios --fail-on-critical
 
 ---
 
+## 🎟️ Pricing & License Activation
+
+AppsVantage Preflight is designed for indie developers and production engineering teams:
+
+| Tier | Price | What's Included |
+|---|---|---|
+| **Free Trial** | **$0** | 1 comprehensive pre-flight scan of any iOS project or .ipa |
+| **App Launch Pass** | **$19.99** (one-time) | 90 days of unlimited audits for 1 app, CI/CD gating, privacy manifests |
+| **Agency Monthly** | **$49.99/mo** | Unlimited audits across up to 10 apps, team sharing, priority support |
+
+### Activating Your License
+Once purchased at [https://www.appsvantage.com/preflight](https://www.appsvantage.com/preflight), pass your key via CLI or environment variable:
+
+```bash
+# Pass via CLI flag
+npx appsvantage-preflight ./ios --key YOUR_LICENSE_KEY
+
+# Or export as environment variable
+export APPSVANTAGE_LICENSE_KEY=YOUR_LICENSE_KEY
+npx appsvantage-preflight ./ios
+```
+
+---
+
 ## 🤖 Model Context Protocol (MCP) Agent Server
 
 Integrate preflight auditing directly into **Cursor**, **Windsurf**, or **Claude Code**:
@@ -35,7 +59,10 @@ Integrate preflight auditing directly into **Cursor**, **Windsurf**, or **Claude
   "mcpServers": {
     "appsvantage": {
       "command": "npx",
-      "args": ["appsvantage-preflight", "mcp"]
+      "args": ["appsvantage-preflight", "mcp"],
+      "env": {
+        "APPSVANTAGE_LICENSE_KEY": "YOUR_LICENSE_KEY"
+      }
     }
   }
 }
@@ -63,12 +90,16 @@ ARGUMENTS:
                           Defaults to current directory (.) if omitted.
 
 OPTIONS:
+  -k, --key <key>         AppsVantage license key or account email.
   --json                  Output audit report as raw JSON (for CI/CD pipelines).
   --fail-on-critical      Exit with code 1 if critical submission blockers are detected.
   --generate-xcprivacy    Generate a valid Apple PrivacyInfo.xcprivacy file.
   --decode-rejection      Decode Apple Review rejection text and generate appeal letter.
   -v, --version           Print tool version.
   -h, --help              Show help screen.
+
+ENVIRONMENT VARIABLES:
+  APPSVANTAGE_LICENSE_KEY AppsVantage license key or account email.
 ```
 
 ---
@@ -94,10 +125,10 @@ OPTIONS:
 ## 🌐 Web Platform & Deep Analytics
 
 Need competitor intelligence, paywall benchmarks, or certified PDF audit reports?
-Visit [AppsVantage Web Portal](https://appsvantage.com).
+Visit [https://www.appsvantage.com](https://www.appsvantage.com).
 
 ---
 
 ## 📄 License
 
-MIT © [AppsVantage](https://appsvantage.com)
+MIT © [AppsVantage](https://www.appsvantage.com)

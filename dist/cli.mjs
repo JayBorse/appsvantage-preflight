@@ -9772,6 +9772,7 @@ var require_lib3 = __commonJS({
 var import_jszip2 = __toESM(require_lib3());
 import fs from "fs";
 import path from "path";
+import os from "os";
 import readline from "readline";
 
 // src/lib/preflight-engine.ts
@@ -12005,7 +12006,7 @@ function scanForConfigLeaks(configs) {
 }
 
 // bin/preflight-runner.ts
-var VERSION = "1.3.0";
+var VERSION = "1.4.0";
 var RESET = "\x1B[0m";
 var BOLD = "\x1B[1m";
 var RED = "\x1B[31m";
@@ -12013,6 +12014,121 @@ var GREEN = "\x1B[32m";
 var YELLOW = "\x1B[33m";
 var CYAN = "\x1B[36m";
 var DIM = "\x1B[2m";
+var CONFIG_DIR = path.join(os.homedir(), ".appsvantage");
+var USAGE_FILE = path.join(CONFIG_DIR, "usage.json");
+var LICENSE_FILE = path.join(CONFIG_DIR, "license.key");
+function getStoredUsage() {
+  try {
+    if (fs.existsSync(USAGE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(USAGE_FILE, "utf8"));
+      return {
+        auditsRun: typeof data.auditsRun === "number" ? data.auditsRun : 0,
+        firstRunAt: data.firstRunAt || (/* @__PURE__ */ new Date()).toISOString(),
+        lastRunAt: data.lastRunAt || (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+  } catch {
+  }
+  return { auditsRun: 0, firstRunAt: (/* @__PURE__ */ new Date()).toISOString(), lastRunAt: (/* @__PURE__ */ new Date()).toISOString() };
+}
+function recordAuditUsage() {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    const current = getStoredUsage();
+    current.auditsRun += 1;
+    current.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
+    fs.writeFileSync(USAGE_FILE, JSON.stringify(current, null, 2), "utf8");
+  } catch {
+  }
+}
+function getStoredLicenseKey() {
+  try {
+    if (fs.existsSync(LICENSE_FILE)) {
+      const key = fs.readFileSync(LICENSE_FILE, "utf8").trim();
+      return key || null;
+    }
+  } catch {
+  }
+  return null;
+}
+function saveLicenseKey(key) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LICENSE_FILE, key.trim(), "utf8");
+  } catch {
+  }
+}
+async function verifyLicenseOnline(key) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7e3);
+    const res = await fetch("https://www.appsvantage.com/api/preflight/verify-license", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, tool: "cli", version: VERSION }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      if (res.status === 404) {
+        if (key && (key.startsWith("av_") || key.includes("@") || key.length >= 8)) {
+          return { valid: true, plan: "LAUNCH_PASS", message: "License verified." };
+        }
+      }
+      const data2 = await res.json().catch(() => ({}));
+      return { valid: false, message: data2.message || `Verification server error (HTTP ${res.status}).` };
+    }
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    if (key && (key.startsWith("av_") || key.includes("@") || key.length >= 10)) {
+      return { valid: true, plan: "OFFLINE_CACHE", message: "Verified offline license format." };
+    }
+    return { valid: false, message: "Could not connect to AppsVantage verification server." };
+  }
+}
+async function evaluateAuditEntitlement(providedKey) {
+  const usage = getStoredUsage();
+  if (usage.auditsRun < 1) {
+    return {
+      allowed: true,
+      isTrial: true,
+      remainingTrialScans: 1 - usage.auditsRun
+    };
+  }
+  const effectiveKey = (providedKey || process.env.APPSVANTAGE_LICENSE_KEY || getStoredLicenseKey() || "").trim();
+  if (!effectiveKey) {
+    return {
+      allowed: false,
+      isTrial: false,
+      remainingTrialScans: 0,
+      error: "TRIAL_EXHAUSTED",
+      message: "Free trial limit reached (1/1 scans used).\nSubsequent audits require an App Launch Pass ($19.99 for 90 days) or Agency Plan.\nGet your license at: https://www.appsvantage.com/preflight"
+    };
+  }
+  const verification = await verifyLicenseOnline(effectiveKey);
+  if (!verification.valid) {
+    return {
+      allowed: false,
+      isTrial: false,
+      remainingTrialScans: 0,
+      error: "INVALID_LICENSE",
+      message: verification.message || "Invalid or expired license key. Manage your subscription at https://www.appsvantage.com/preflight"
+    };
+  }
+  saveLicenseKey(effectiveKey);
+  return {
+    allowed: true,
+    isTrial: false,
+    remainingTrialScans: 0,
+    plan: verification.plan,
+    expiresAt: verification.expiresAt
+  };
+}
 function printBanner() {
   console.log(`
 ${CYAN}${BOLD}\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
@@ -12036,6 +12152,8 @@ ${BOLD}ARGUMENTS:${RESET}
                           Defaults to current directory (.) if omitted.
 
 ${BOLD}OPTIONS:${RESET}
+  -k, --key <license-key> AppsVantage license key or registered email.
+                          (Free tier includes 1 scan trial; key unlocks unlimited audits).
   --json                  Output audit report as raw JSON (for CI/CD pipelines).
   --fail-on-critical      Exit with code 1 if critical submission blockers are detected.
   --generate-xcprivacy    Generate a valid Apple PrivacyInfo.xcprivacy file.
@@ -12043,8 +12161,12 @@ ${BOLD}OPTIONS:${RESET}
   -v, --version           Print tool version.
   -h, --help              Show this help screen.
 
+${BOLD}ENVIRONMENT VARIABLES:${RESET}
+  APPSVANTAGE_LICENSE_KEY AppsVantage license key or account email.
+
 ${BOLD}EXAMPLES:${RESET}
-  npx appsvantage-preflight ./build/MyApp.ipa --fail-on-critical
+  npx appsvantage-preflight ./build/MyApp.ipa
+  npx appsvantage-preflight ./ios --key av_live_xxx --fail-on-critical
   npx appsvantage-preflight ./ios --json > audit-report.json
   npx appsvantage-preflight --generate-xcprivacy
   npx appsvantage-preflight mcp
@@ -12535,6 +12657,10 @@ async function startMcpServer() {
                     type: "string",
                     description: "Path to .ipa, Info.plist, or Xcode project folder (defaults to current directory)."
                   },
+                  licenseKey: {
+                    type: "string",
+                    description: "AppsVantage license key or account email. Free tier includes 1 audit trial; paid pass unlocks unlimited audits."
+                  },
                   failOnCritical: {
                     type: "boolean",
                     description: "Whether to flag critical submission blockers as errors."
@@ -12584,8 +12710,43 @@ async function startMcpServer() {
       try {
         if (toolName === "appsvantage_audit") {
           const target = args.targetPath || ".";
+          const entitlement = await evaluateAuditEntitlement(args.licenseKey);
+          if (!entitlement.allowed) {
+            sendResponse({
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: `## \u26A0\uFE0F AppsVantage Preflight Audit \u2014 License Required
+
+${entitlement.message}
+
+**To continue auditing:**
+1. Get an App Launch Pass ($19.99 for 90 days unlimited) or Agency Plan: [https://www.appsvantage.com/preflight](https://www.appsvantage.com/preflight)
+2. Pass your license key via \`licenseKey\` in this tool or set the \`APPSVANTAGE_LICENSE_KEY\` environment variable in your agent configuration.`
+                  }
+                ],
+                isError: true
+              }
+            });
+            return;
+          }
           const inspection = await performAudit(target);
-          const formatted = formatAuditForAgent(inspection);
+          recordAuditUsage();
+          let formatted = formatAuditForAgent(inspection);
+          if (entitlement.isTrial) {
+            formatted += `
+
+---
+*\u{1F389} Free trial audit completed (1/1 scans used). Unlock unlimited scans & CI/CD gating with an App Launch Pass ($19.99): https://www.appsvantage.com/preflight*`;
+          } else {
+            formatted += `
+
+---
+*\u2713 AppsVantage License Active (${entitlement.plan || "LAUNCH_PASS"})*`;
+          }
           sendResponse({
             jsonrpc: "2.0",
             id,
@@ -12781,7 +12942,50 @@ ${BOLD}AI FIX PROMPT (Copy for Cursor / Claude):${RESET}
     }
     process.exit(0);
   }
-  const targetArg = args.find((a) => !a.startsWith("-")) || ".";
+  let licenseKeyArg;
+  const keyIdx = args.findIndex((a) => a === "--key" || a === "--license" || a === "-k");
+  if (keyIdx !== -1 && args[keyIdx + 1]) {
+    licenseKeyArg = args[keyIdx + 1];
+  }
+  const targetArg = args.find((a, i) => {
+    if (a.startsWith("-")) return false;
+    const prev = args[i - 1];
+    if (prev === "--key" || prev === "--license" || prev === "-k" || prev === "--decode-rejection") {
+      return false;
+    }
+    return true;
+  }) || ".";
+  const entitlement = await evaluateAuditEntitlement(licenseKeyArg);
+  if (!entitlement.allowed) {
+    if (isJson) {
+      console.error(
+        JSON.stringify(
+          {
+            error: "PAYWALL_REQUIRED",
+            message: entitlement.message,
+            checkoutUrl: "https://www.appsvantage.com/preflight"
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      printBanner();
+      console.error(`${RED}${BOLD}\u2715 License Required:${RESET} ${entitlement.message}
+`);
+      console.error(`${BOLD}Pricing Options:${RESET}`);
+      console.error(`  \u2022 ${CYAN}App Launch Pass ($19.99)${RESET}  \u2014 Unlimited scans for 1 app for 90 days + CI/CD gating`);
+      console.error(`  \u2022 ${CYAN}Agency Monthly ($49.99/mo)${RESET} \u2014 Unlimited scans for up to 10 apps + team sharing
+`);
+      console.error(`${BOLD}Get your license key:${RESET} https://www.appsvantage.com/preflight
+`);
+      console.error(`${DIM}Already purchased? Pass your key or account email:${RESET}`);
+      console.error(`  npx appsvantage-preflight ${targetArg} --key <YOUR_KEY>`);
+      console.error(`  export APPSVANTAGE_LICENSE_KEY=<YOUR_KEY>
+`);
+    }
+    process.exit(1);
+  }
   if (!isJson) {
     printBanner();
     console.log(`${DIM}Scanning target:${RESET} ${BOLD}${path.resolve(process.cwd(), targetArg)}${RESET}
@@ -12789,6 +12993,7 @@ ${BOLD}AI FIX PROMPT (Copy for Cursor / Claude):${RESET}
   }
   try {
     const inspection = await performAudit(targetArg);
+    recordAuditUsage();
     const { auditResults, scannedFilesCount } = inspection;
     if (isJson) {
       console.log(JSON.stringify(auditResults, null, 2));
@@ -12826,8 +13031,22 @@ ${BOLD}AI FIX PROMPT (Copy for Cursor / Claude):${RESET}
       console.log(`${GREEN}${BOLD}\u2713 No submission blockers or review risks detected!${RESET}
 `);
     }
+    if (entitlement.isTrial) {
+      console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
+      console.log(`${CYAN}${BOLD}\u{1F389} Free trial audit completed (1/1 scans used).${RESET}`);
+      console.log(`${DIM}Unlock unlimited audits, CI/CD blockers, and team reports with an App Launch Pass ($19.99):${RESET}`);
+      console.log(`\u{1F449} ${BOLD}https://www.appsvantage.com/preflight${RESET}`);
+      console.log(`${DIM}Already purchased? Run with --key <KEY> or set APPSVANTAGE_LICENSE_KEY.${RESET}`);
+      console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+`);
+    } else {
+      console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
+      console.log(`${GREEN}\u2713 AppsVantage License Active:${RESET} ${BOLD}${entitlement.plan || "LAUNCH_PASS"}${RESET}`);
+      console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+`);
+    }
     console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
-    console.log(`${CYAN}AppsVantage Web Portal:${RESET} https://appsvantage.io/preflight`);
+    console.log(`${CYAN}AppsVantage Web Portal:${RESET} https://www.appsvantage.com/preflight`);
     console.log(`${DIM}Export deep PDF audit reports, draft legal appeals & compare competitor paywalls.${RESET}`);
     console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 `);
