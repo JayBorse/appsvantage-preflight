@@ -4,7 +4,7 @@
 Audit iOS applications, Xcode projects, and compiled `.ipa` archives against Apple App Store Review Guidelines *before* submitting to TestFlight or App Store Review.
 
 [![npm version](https://img.shields.io/npm/v/appsvantage-preflight.svg)](https://www.npmjs.com/package/appsvantage-preflight)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20macOS-black.svg)]()
 
 ---
 
@@ -131,4 +131,5 @@ Visit [https://www.appsvantage.com](https://www.appsvantage.com).
 
 ## 📄 License
 
-MIT © [AppsVantage](https://www.appsvantage.com)
+Commercial © [AppsVantage](https://www.appsvantage.com). All rights reserved. Free for initial pre-flight scans. See [appsvantage.com/preflight](https://www.appsvantage.com/preflight) for terms.
+

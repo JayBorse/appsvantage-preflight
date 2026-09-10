@@ -1,7 +1,7 @@
 ---
 name: appsvantage-preflight
 description: Apple App Store pre-flight guideline auditor, May 2024 Privacy Manifest generator, and rejection decoder for iOS developers.
-license: MIT
+license: Proprietary
 metadata:
   author: AppsVantage
 ---

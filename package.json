@@ -27,7 +27,7 @@
     "audit"
   ],
   "author": "AppsVantage <support@appsvantage.com>",
-  "license": "MIT",
+  "license": "Commercial",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JayBorse/appsvantage-preflight.git"
